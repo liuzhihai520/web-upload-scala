@@ -12,7 +12,7 @@ $(document).ready(function(){
     //初始化SWF
     xiuxiu.embedSWF("swfContainer",5,"100%","100%");
     //设置上传地址
-    xiuxiu.setUploadURL("http://localhost:9000/upload");
+    xiuxiu.setUploadURL("http://121.43.117.154:9000/upload");
     //设置上传参数
     xiuxiu.setUploadArgs({userId:11128, filetype:"avatar"});
     //设置上传方式

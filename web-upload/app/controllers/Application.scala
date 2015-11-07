@@ -75,7 +75,7 @@ object Application extends Controller {
           })
 
           deleteFile(createPath(s"expert/temp/$userId.jpg"))
-          result = Ok(Json.stringify(Json.parse(s"""{"status" : "1", "message" : "success", "name" : "$hash.png", "url" : "http://121.43.117.154:9000/resource/expert/160/160/$hash.png"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+          result = Ok(Json.stringify(Json.parse(s"""{"status" : "0", "message" : "success", "name" : "$hash.png", "url" : "http://121.43.117.154:9001/expert/160/160/$hash.png"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
         } getOrElse {
           result = mission_file
         }
@@ -102,7 +102,7 @@ object Application extends Controller {
 
           deleteFile(createPath(s"news/temp/$hash.jpg"))
 
-          result = Ok(Json.stringify(Json.parse(s"""{"status" : "1", "message" : "success", "name" : "$hash.png", "url" : "http://121.43.117.154:9000/resource/news/800/$hash.png"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+          result = Ok(Json.stringify(Json.parse(s"""{"status" : "0", "message" : "success", "name" : "$hash.png", "url" : "http://121.43.117.154:9001/news/800/$hash.png"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
 
         } getOrElse {
           result = mission_file
