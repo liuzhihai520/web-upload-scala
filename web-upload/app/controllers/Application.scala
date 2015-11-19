@@ -15,7 +15,7 @@ object Application extends Controller {
     //路劲
     val PATH = "/home/resource/"
     //图片规格
-    val size = Array("70x70", "160x160")
+    val avatarSize = Array("70x70","160x160")
     //参数
     val K_USER_ID = "userId"
     val K_FILE_UPLOAD = "Filedata"
@@ -41,6 +41,27 @@ object Application extends Controller {
         val userId = formData.get(K_USER_ID).map(_.head).getOrElse("0")
         val filetype = formData.get(K_FILE_TYPE).map(_.head).getOrElse("0")
         filetype match {
+            case "avatar" => {
+                if (!userId.equals("0")) {
+                    request.body.file(K_FILE_UPLOAD).map { f =>
+                        f.ref.moveTo(new File(createPath(s"avatar/temp/$userId.jpg")), replace = true)
+
+                        avatarSize.foreach({ f =>
+                          val from = createPath(s"avatar/temp/$userId.jpg")
+                          val size = f.replace('x', '/')
+                          val to = createPath(s"avatar/$size/$userId.png")
+                          thumbnails(from, to, f)
+                        })
+
+                        deleteFile(createPath(s"avatar/temp/$userId.jpg"))
+
+                    } getOrElse {
+                        result = mission_file
+                    }
+                } else {
+                  result = mission_param
+                }
+            }
             case "banner" => {
                 request.body.file(K_FILE_UPLOAD).map { f =>
                     val hash = fileHash(f.ref.file).toLowerCase()
