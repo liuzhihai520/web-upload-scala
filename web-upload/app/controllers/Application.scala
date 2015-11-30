@@ -15,7 +15,7 @@ object Application extends Controller {
     //路劲
     val PATH = "/home/resource/"
     //图片规格
-    val avatarSize = Array("70x70","160x160")
+    val avatarSize = Array("70x70","160x160","640x640")
     //参数
     val K_USER_ID = "userId"
     val K_FILE_UPLOAD = "Filedata"
@@ -36,61 +36,98 @@ object Application extends Controller {
     //上传图片
     def upload = Action(parse.multipartFormData) {
         request =>
-        var result = success
-        val formData = request.body.asFormUrlEncoded
-        val userId = formData.get(K_USER_ID).map(_.head).getOrElse("0")
-        val filetype = formData.get(K_FILE_TYPE).map(_.head).getOrElse("0")
-        filetype match {
-            case "avatar" => {
-                if (!userId.equals("0")) {
+            var result = success
+            val formData = request.body.asFormUrlEncoded
+            val userId = formData.get(K_USER_ID).map(_.head).getOrElse("0")
+            val filetype = formData.get(K_FILE_TYPE).map(_.head).getOrElse("0")
+            filetype match {
+                case "avatar" => {
+                    if (!userId.equals("0")) {
+                        request.body.file(K_FILE_UPLOAD).map { f =>
+                            f.ref.moveTo(new File(createPath(s"avatar/temp/$userId.jpg")), replace = true)
+
+                            avatarSize.foreach({ f =>
+                                val from = createPath(s"avatar/temp/$userId.jpg")
+                                val size = f.replace('x', '/')
+                                val to = createPath(s"avatar/$size/$userId.png")
+                                thumbnails(from, to, f)
+                            })
+
+                            deleteFile(createPath(s"avatar/temp/$userId.jpg"))
+
+                        } getOrElse {
+                            result = mission_file
+                        }
+                    } else {
+                        result = mission_param
+                    }
+                }
+                case "banner" => {
                     request.body.file(K_FILE_UPLOAD).map { f =>
-                        f.ref.moveTo(new File(createPath(s"avatar/temp/$userId.jpg")), replace = true)
-
-                        avatarSize.foreach({ f =>
-                          val from = createPath(s"avatar/temp/$userId.jpg")
-                          val size = f.replace('x', '/')
-                          val to = createPath(s"avatar/$size/$userId.png")
-                          thumbnails(from, to, f)
-                        })
-
-                        deleteFile(createPath(s"avatar/temp/$userId.jpg"))
-
+                        val hash = fileHash(f.ref.file).toLowerCase()
+                        f.ref.moveTo(new File(createPath(s"banner/$hash.jpg")), replace = true)
+                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                     } getOrElse {
                         result = mission_file
                     }
-                } else {
-                  result = mission_param
+                }
+                case "activity" => {
+                    request.body.file(K_FILE_UPLOAD).map { f =>
+                        val hash = fileHash(f.ref.file).toLowerCase()
+                        f.ref.moveTo(new File(createPath(s"activity/$hash.jpg")), replace = true)
+                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"activity/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                    } getOrElse {
+                        result = mission_file
+                    }
+                }
+                case "qrcode" => {
+                    request.body.file(K_FILE_UPLOAD).map { f =>
+                        val hash = fileHash(f.ref.file).toLowerCase()
+                        f.ref.moveTo(new File(createPath(s"qrcode/$hash.jpg")), replace = true)
+                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"qrcode/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                    } getOrElse {
+                        result = mission_file
+                    }
+                }
+                case "projectImg" => {
+                    request.body.file(K_FILE_UPLOAD).map { f =>
+                        val hash = fileHash(f.ref.file).toLowerCase()
+                        f.ref.moveTo(new File(createPath(s"project/img/$hash.jpg")), replace = true)
+                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                    } getOrElse {
+                        result = mission_file
+                    }
+                }
+
+                case "projectFile" => {
+                    request.body.file(K_FILE_UPLOAD).map { f =>
+                        val hash = fileHash(f.ref.file).toLowerCase()
+                        //后缀名
+                        val filename = f.filename
+                        val fix = filename.substring(filename.lastIndexOf(""".""")+1,filename.length())
+                        f.ref.moveTo(new File(createPath(s"project/file/$hash.$fix")), replace = true)
+                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/file/$hash.$fix"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                    } getOrElse {
+                        result = mission_file
+                    }
+                }
+
+                //上传身份证
+                case "cardImg" => {
+                    if (!userId.equals("0")) {
+                        request.body.file(K_FILE_UPLOAD).map { f =>
+                            val hash = fileHash(f.ref.file).toLowerCase()
+                            f.ref.moveTo(new File(createPath(s"auth/card/$userId/$hash.jpg")), replace = true)
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"auth/card/$userId/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        } getOrElse {
+                            result = mission_file
+                        }
+                    }else{
+                        result = mission_file
+                    }
                 }
             }
-            case "banner" => {
-                request.body.file(K_FILE_UPLOAD).map { f =>
-                    val hash = fileHash(f.ref.file).toLowerCase()
-                    f.ref.moveTo(new File(createPath(s"banner/$hash.jpg")), replace = true)
-                    result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                } getOrElse {
-                    result = mission_file
-                }
-            }
-            case "activity" => {
-                request.body.file(K_FILE_UPLOAD).map { f =>
-                    val hash = fileHash(f.ref.file).toLowerCase()
-                    f.ref.moveTo(new File(createPath(s"activity/$hash.jpg")), replace = true)
-                    result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"activity/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                } getOrElse {
-                    result = mission_file
-                }
-            }
-            case "qrcode" => {
-                request.body.file(K_FILE_UPLOAD).map { f =>
-                    val hash = fileHash(f.ref.file).toLowerCase()
-                    f.ref.moveTo(new File(createPath(s"qrcode/$hash.jpg")), replace = true)
-                    result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"qrcode/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                } getOrElse {
-                    result = mission_file
-                }
-            }
-        }
-        result
+            result
     }
 
     //创建路劲
