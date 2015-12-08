@@ -126,6 +126,23 @@ object Application extends Controller {
                         result = mission_file
                     }
                 }
+                //其他证件
+                case "creditImg" => {
+                    if (!userId.equals("0")) {
+                        request.body.file(K_FILE_UPLOAD).map { f =>
+                            val hash = fileHash(f.ref.file).toLowerCase()
+                            //后缀名
+                            val filename = f.filename
+                            val fix = filename.substring(filename.lastIndexOf(""".""")+1,filename.length())
+                            f.ref.moveTo(new File(createPath(s"project/file/$hash.$fix")), replace = true)
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"auth/card/file/$hash.$fix"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        } getOrElse {
+                            result = mission_file
+                        }
+                    }else{
+                        result = mission_file
+                    }
+                }
             }
             result
     }
