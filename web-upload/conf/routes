@@ -8,5 +8,6 @@ POST        /upload              controllers.Application.upload
 POST        /editorUpload        controllers.Application.editorUpload
 GET         /crossdomain.xml     controllers.Application.crossdomain
 
+
 # Map static resources from the /public folder to the /assets URL path
 GET         /assets/*file        controllers.Assets.versioned(path="/public", file: Asset)
