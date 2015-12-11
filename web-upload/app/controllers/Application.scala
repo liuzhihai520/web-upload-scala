@@ -147,6 +147,45 @@ object Application extends Controller {
             result
     }
 
+    //Editor-图片特殊处理
+    def editorUpload = Action(parse.multipartFormData) {
+        implicit request=>
+        val callback = request.getQueryString("CKEditorFuncNum").getOrElse("")
+        request.body.file("upload").map { f =>
+            val hash = fileHash(f.ref.file).toLowerCase()
+            //后缀名
+            val filename = f.filename
+            val fix = filename.substring(filename.lastIndexOf(""".""")+1,filename.length())
+            if(fix.contains("jpg|jpeg|gif|png|bmp|JPG|JPEG|GIF|BMP|PNG")){
+                val url = s"editor/$hash.jpg"
+                f.ref.moveTo(new File(createPath(url)), replace = true)
+                Ok(
+                    s"""
+                       |<script type="text/javascript">
+                       |window.parent.CKEDITOR.tools.callFunction('$callback','http://image.ruijiutou.com/$url','')
+                       |</script>
+                """.stripMargin
+                ).as("text/html")
+            }else{
+                Ok(
+                    s"""
+                       |<script type="text/javascript">
+                       |window.parent.CKEDITOR.tools.callFunction('$callback','','文件格式不正确(必须为.jpg/.gif/.bmp/.png文件)')
+                       |</script>
+                """.stripMargin
+                ).as("text/html")
+            }
+        } getOrElse {
+            Ok(
+                s"""
+                   |<script type="text/javascript">
+                   |window.parent.CKEDITOR.tools.callFunction('$callback','','上传的文件不存在')
+                   |</script>
+                """.stripMargin
+            ).as("text/html")
+        }
+    }
+
     //创建路劲
     def createPath(filePath: String): String = {
         val path = FilenameUtils.getPath(filePath)

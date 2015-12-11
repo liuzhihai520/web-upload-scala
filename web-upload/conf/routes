@@ -5,6 +5,7 @@
 # Home page
 GET         /                    controllers.Application.test
 POST        /upload              controllers.Application.upload
+POST        /editorUpload        controllers.Application.editorUpload
 GET         /crossdomain.xml     controllers.Application.crossdomain
 
 # Map static resources from the /public folder to the /assets URL path
