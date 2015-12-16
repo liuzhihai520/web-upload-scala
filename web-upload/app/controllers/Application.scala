@@ -135,7 +135,7 @@ object Application extends Controller {
                             val filename = f.filename
                             val fix = filename.substring(filename.lastIndexOf(""".""")+1,filename.length())
                             f.ref.moveTo(new File(createPath(s"project/file/$hash.$fix")), replace = true)
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"auth/card/file/$hash.$fix"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"auth/card/file/$userId/$hash.$fix"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                         } getOrElse {
                             result = mission_file
                         }
