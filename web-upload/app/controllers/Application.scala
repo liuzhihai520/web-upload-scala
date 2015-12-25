@@ -84,11 +84,11 @@ object Application extends Controller {
                             }
                         }else{
                             //移动端
-                            if(src.getWidth == 750 && src.getHeight == 438 && kb <= 300){
+                            if(src.getWidth == 750 && src.getHeight == 438 && kb <= 800){
                                 result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                             }else{
                                 deleteFile(from)
-                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为1920x360/300KB","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为1920x360/800KB","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                             }
                         }
                     } getOrElse {
@@ -99,7 +99,16 @@ object Application extends Controller {
                     request.body.file(K_FILE_UPLOAD).map { f =>
                         val hash = fileHash(f.ref.file).toLowerCase()
                         f.ref.moveTo(new File(createPath(s"activity/$hash.jpg")), replace = true)
-                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"activity/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        val from = createPath(s"activity/$hash.jpg")
+                        val file: File = new File(from)
+                        val src: BufferedImage = ImageIO.read(file)
+                        val bd:BigDecimal = file.length()/1024.0
+                        val kb = bd.setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+                        if(src.getWidth == 550 && src.getHeight == 290 && kb <= 300){
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"activity/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        }else{
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为550x290/300KB","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        }
                     } getOrElse {
                         result = mission_file
                     }
