@@ -20,6 +20,7 @@ object Application extends Controller {
     val K_USER_ID = "userId"
     val K_FILE_UPLOAD = "Filedata"
     val K_FILE_TYPE = "filetype"
+    val K_PIC_TYPE = "pictype"
     //哈希值
     val HEXES = "0123456789ABCDEF"
 
@@ -40,6 +41,7 @@ object Application extends Controller {
             val formData = request.body.asFormUrlEncoded
             val userId = formData.get(K_USER_ID).map(_.head).getOrElse("0")
             val filetype = formData.get(K_FILE_TYPE).map(_.head).getOrElse("0")
+            val pictype = formData.get(K_PIC_TYPE).map(_.head).getOrElse("0").toInt
             filetype match {
                 case "avatar" => {
                     if (!userId.equals("0")) {
@@ -66,7 +68,29 @@ object Application extends Controller {
                     request.body.file(K_FILE_UPLOAD).map { f =>
                         val hash = fileHash(f.ref.file).toLowerCase()
                         f.ref.moveTo(new File(createPath(s"banner/$hash.jpg")), replace = true)
-                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        val from = createPath(s"banner/$hash.jpg")
+                        val file: File = new File(from)
+                        val src: BufferedImage = ImageIO.read(file)
+                        val bd:BigDecimal = file.length()/1024.0
+                        val kb = bd.setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+                        //判断类型
+                        if(pictype == 0){
+                            //PC端
+                            if(src.getWidth == 1920 && src.getHeight == 360 && kb <= 800){
+                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                            }else{
+                                deleteFile(from)
+                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为1920x360/800KB","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                            }
+                        }else{
+                            //移动端
+                            if(src.getWidth == 750 && src.getHeight == 438 && kb <= 300){
+                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                            }else{
+                                deleteFile(from)
+                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为1920x360/300KB","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                            }
+                        }
                     } getOrElse {
                         result = mission_file
                     }
@@ -95,7 +119,7 @@ object Application extends Controller {
                         f.ref.moveTo(new File(createPath(s"project/img/$hash.jpg")), replace = true)
                         val from = createPath(s"project/img/$hash.jpg")
                         val file: File = new File(from)
-                        val src: BufferedImage = javax.imageio.ImageIO.read(file)
+                        val src: BufferedImage = ImageIO.read(file)
                         if(src.getWidth == 640 && src.getHeight == 480){
                             result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                         }else{
