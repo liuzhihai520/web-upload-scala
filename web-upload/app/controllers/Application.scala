@@ -88,7 +88,7 @@ object Application extends Controller {
                                 result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                             }else{
                                 deleteFile(from)
-                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为1920x360/800KB","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为750x438/800KB","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                             }
                         }
                     } getOrElse {
