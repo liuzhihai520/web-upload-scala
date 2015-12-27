@@ -184,6 +184,16 @@ object Application extends Controller {
                         result = mission_file
                     }
                 }
+                //logo
+                case "logo" => {
+                    request.body.file(K_FILE_UPLOAD).map { f =>
+                        val hash = fileHash(f.ref.file).toLowerCase()
+                        f.ref.moveTo(new File(createPath(s"logo/$hash.jpg")), replace = true)
+                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"logo/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                    } getOrElse {
+                        result = mission_file
+                    }
+                }
             }
             result
     }
