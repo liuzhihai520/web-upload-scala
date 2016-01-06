@@ -126,17 +126,7 @@ object Application extends Controller {
                     request.body.file(K_FILE_UPLOAD).map { f =>
                         val hash = fileHash(f.ref.file).toLowerCase()
                         f.ref.moveTo(new File(createPath(s"project/img/$hash.jpg")), replace = true)
-                        val from = createPath(s"project/img/$hash.jpg")
-                        val file: File = new File(from)
-                        val src: BufferedImage = ImageIO.read(file)
-                        val bd:BigDecimal = file.length()/1024.0
-                        val kb = bd.setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
-                        if(src.getWidth == 640 && src.getHeight == 480 && kb <= 2048){
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        }else{
-                            deleteFile(from)
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为640x480且最大2M","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        }
+                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                     } getOrElse {
                         result = mission_file
                     }
