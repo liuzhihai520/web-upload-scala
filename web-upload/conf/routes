@@ -6,6 +6,7 @@
 GET         /                    controllers.Application.test
 POST        /upload              controllers.Application.upload
 POST        /editorUpload        controllers.Application.editorUpload
+GET         /cropper             controllers.Application.cropper(filename:String, filetype:String, x:Int, y:Int, size:String)
 GET         /crossdomain.xml     controllers.Application.crossdomain
 
 
