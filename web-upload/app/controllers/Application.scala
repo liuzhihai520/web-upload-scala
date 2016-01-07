@@ -5,6 +5,7 @@ import java.io.{InputStreamReader, BufferedReader, FileInputStream, File}
 import javax.imageio.ImageIO
 
 import org.apache.commons.io.FilenameUtils
+import play.api.libs.Codecs
 import play.api.libs.json.Json
 import play.api.mvc._
 
@@ -107,6 +108,7 @@ object Application extends Controller {
                         if(src.getWidth == 550 && src.getHeight == 290 && kb <= 2048){
                             result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"activity/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                         }else{
+                            deleteFile(from)
                             result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为550x290且最大2M","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                         }
                     } getOrElse {
@@ -125,8 +127,20 @@ object Application extends Controller {
                 case "projectImg" => {
                     request.body.file(K_FILE_UPLOAD).map { f =>
                         val hash = fileHash(f.ref.file).toLowerCase()
-                        f.ref.moveTo(new File(createPath(s"project/img/$hash.jpg")), replace = true)
-                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        f.ref.moveTo(new File(createPath(s"project/img/temp/$hash.jpg")), replace = true)
+                        val from = createPath(s"project/img/temp/$hash.jpg")
+                        val file: File = new File(from)
+                        val src: BufferedImage = ImageIO.read(file)
+                        val width = src.getWidth
+                        val height = src.getHeight
+                        val bd:BigDecimal = file.length()/1024.0
+                        val kb = bd.setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+                        if(kb <= 2048){
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/temp/$hash.jpg","width" :$width , "height" : $height}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        }else{
+                            deleteFile(from)
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片最大2M","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        }
                     } getOrElse {
                         result = mission_file
                     }
@@ -196,6 +210,25 @@ object Application extends Controller {
                 }
             }
             result
+    }
+
+    //图片裁剪
+    def cropper(filename: String, filetype: String, x: Int, y: Int, size: String) = Action { request =>
+        var result = success
+        if (!filename.equals("") && !x.equals("") && !y.equals("") && !size.equals("")) {
+            filetype match {
+                case "item" => {
+                    val newFile = Codecs.md5(filename.getBytes)
+                    val originFile = createPath(s"project/img/temp/$filename")
+                    val cropFile = createPath(s"project/img/$newFile.jpg")
+                    Process(s"""convert -strip +profile "*" -quality 90 $originFile[0] -crop $size+$x+$y +repage $cropFile""").!
+                    result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/$newFile.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                }
+            }
+        } else {
+            result = mission_param
+        }
+        result
     }
 
     //Editor-图片特殊处理
