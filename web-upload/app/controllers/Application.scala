@@ -219,7 +219,7 @@ object Application extends Controller {
             filetype match {
                 case "item" => {
                     val newFile = Codecs.md5(filename.getBytes)
-                    val originFile = createPath(s"project/img/temp/$filename")
+                    val originFile = createPath(filename)
                     val cropFile = createPath(s"project/img/$newFile.jpg")
                     Process(s"""convert -strip +profile "*" -quality 90 $originFile[0] -crop $size+$x+$y +repage $cropFile""").!
                     result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/$newFile.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
