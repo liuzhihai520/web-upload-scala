@@ -134,7 +134,7 @@ object Application extends Controller {
                 }
 				case "burse" => {
 					if (corpId.equals("")) {
-                        Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing params cropId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+                        Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing params corpId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
                     }else if(userId.equals("")){
                         Ok(Json.stringify(Json.parse( """{"status" : 2, "message" : "missing params userId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
                     }else if(uuid.equals("")){
@@ -147,7 +147,7 @@ object Application extends Controller {
 							f.ref.moveTo(new File(createPath(s"burse/$corpId/$userId/$date/$hash.jpg")), replace = true)
 
 							workSize.foreach({ f =>
-								val from = createPath(s"burse/$corpId/$userId$date/$hash.jpg")
+								val from = createPath(s"burse/$corpId/$userId/$date/$hash.jpg")
 								val size = f.replace('x', '/')
 								val to = createPath(s"burse/$corpId/$userId/$date/$size/$hash.jpg")
 								thumbnails(from, to, f)
