@@ -1,10 +1,9 @@
 package controllers
 
-import java.awt.image.BufferedImage
 import java.io.{InputStreamReader, BufferedReader, FileInputStream, File}
-import javax.imageio.ImageIO
 
 import org.apache.commons.io.FilenameUtils
+import org.joda.time.DateTime
 import play.api.libs.Codecs
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -16,197 +15,149 @@ object Application extends Controller {
     //路劲
     val PATH = "/home/resource/"
     //图片规格
-    val avatarSize = Array("70x70","160x160","640x640")
+    val avatarSize = Array("70x70","100x100","120x120")
+    val workSize = Array("60x60","90x90","120x120")
     //参数
-    val K_USER_ID = "userId"
-    val K_FILE_UPLOAD = "Filedata"
-    val K_FILE_TYPE = "filetype"
-    val K_PIC_TYPE = "pictype"
+    val K_USER_ID = "userId"   //人员编号
+	val K_UUID_ID = "uuid"   //人员编号
+    val K_FILE_UPLOAD = "Filedata" //文件key
+    val K_FILE_TYPE = "filetype"  //文件类型
+    val K_PIC_TYPE = "pictype"    //图片类型比如web/mobile
+    val K_CORP_ID = "corpId" //企业编号
     //哈希值
     val HEXES = "0123456789ABCDEF"
 
     //返回值
-    val mission_param = Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing params"}""")))
-        .as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+    val mission_param = Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing params"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
 
-    val mission_file = Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing file"}""")))
-        .as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+    val mission_file = Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing file"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
 
-    val success = Ok(Json.stringify(Json.parse( """{"status" : 0, "message" : "success"}""")))
-        .as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+    val success = Ok(Json.stringify(Json.parse( """{"status" : 0, "message" : "success"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
 
     //上传图片
     def upload = Action(parse.multipartFormData) {
         request =>
-            var result = success
+            var result = mission_param
             val formData = request.body.asFormUrlEncoded
-            val userId = formData.get(K_USER_ID).map(_.head).getOrElse("0")
+            val corpId = formData.get(K_CORP_ID).map(_.head).getOrElse("")
+			val uuid = formData.get(K_UUID_ID).map(_.head).getOrElse("")
+            val userId = formData.get(K_USER_ID).map(_.head).getOrElse("")
             val filetype = formData.get(K_FILE_TYPE).map(_.head).getOrElse("0")
             val pictype = formData.get(K_PIC_TYPE).map(_.head).getOrElse("0").toInt
             filetype match {
                 case "avatar" => {
-                    if (!userId.equals("0")) {
+                    if (corpId.equals("")) {
+                        Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing params cropId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+                    }else if(userId.equals("")){
+                        Ok(Json.stringify(Json.parse( """{"status" : 2, "message" : "missing params userId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+                    }else{
                         request.body.file(K_FILE_UPLOAD).map { f =>
-                            f.ref.moveTo(new File(createPath(s"avatar/temp/$userId.jpg")), replace = true)
+                            val hash = fileHash(f.ref.file).toLowerCase()
+                            f.ref.moveTo(new File(createPath(s"avatar/$corpId/$userId/$userId.jpg")), replace = true)
 
-                            avatarSize.foreach({ f =>
-                                val from = createPath(s"avatar/temp/$userId.jpg")
+                            workSize.foreach({ f =>
+                                val from = createPath(s"avatar/$corpId/$userId/$userId.jpg")
                                 val size = f.replace('x', '/')
-                                val to = createPath(s"avatar/$size/$userId.png")
+                                val to = createPath(s"avatar/$corpId/$userId/$size/$userId.jpg")
                                 thumbnails(from, to, f)
                             })
 
-                            deleteFile(createPath(s"avatar/temp/$userId.jpg"))
-
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"avatar/$corpId/$userId/120/120/$userId.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                         } getOrElse {
                             result = mission_file
                         }
-                    } else {
-                        result = mission_param
                     }
                 }
-                case "banner" => {
+                case "work" => {
                     request.body.file(K_FILE_UPLOAD).map { f =>
+                        //创建日期
+                        val date = new DateTime().toString("yyyyMMdd")
                         val hash = fileHash(f.ref.file).toLowerCase()
-                        f.ref.moveTo(new File(createPath(s"banner/$hash.jpg")), replace = true)
-                        val from = createPath(s"banner/$hash.jpg")
-                        val file: File = new File(from)
-                        val src: BufferedImage = ImageIO.read(file)
-                        val bd:BigDecimal = file.length()/1024.0
-                        val kb = bd.setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
-                        //判断类型
-                        if(pictype == 0){
-                            //PC端
-                            if(src.getWidth == 1920 && src.getHeight == 360 && kb <= 2048){
-                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                            }else{
-                                deleteFile(from)
-                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为1920x360且最大2M","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                            }
-                        }else{
-                            //移动端
-                            if(src.getWidth == 750 && src.getHeight == 438 && kb <= 2048){
-                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"banner/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                            }else{
-                                deleteFile(from)
-                                result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为750x438且最大2M","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                            }
-                        }
-                    } getOrElse {
-                        result = mission_file
-                    }
-                }
-                case "activity" => {
-                    request.body.file(K_FILE_UPLOAD).map { f =>
-                        val hash = fileHash(f.ref.file).toLowerCase()
-                        f.ref.moveTo(new File(createPath(s"activity/$hash.jpg")), replace = true)
-                        val from = createPath(s"activity/$hash.jpg")
-                        val file: File = new File(from)
-                        val src: BufferedImage = ImageIO.read(file)
-                        val bd:BigDecimal = file.length()/1024.0
-                        val kb = bd.setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
-                        if(src.getWidth == 550 && src.getHeight == 290 && kb <= 2048){
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"activity/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        }else{
-                            deleteFile(from)
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片尺寸只能为550x290且最大2M","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        }
-                    } getOrElse {
-                        result = mission_file
-                    }
-                }
-                case "qrcode" => {
-                    request.body.file(K_FILE_UPLOAD).map { f =>
-                        val hash = fileHash(f.ref.file).toLowerCase()
-                        f.ref.moveTo(new File(createPath(s"qrcode/$hash.jpg")), replace = true)
-                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"qrcode/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                    } getOrElse {
-                        result = mission_file
-                    }
-                }
-                case "projectImg" => {
-                    request.body.file(K_FILE_UPLOAD).map { f =>
-                        val hash = fileHash(f.ref.file).toLowerCase()
-                        f.ref.moveTo(new File(createPath(s"project/img/temp/$hash.jpg")), replace = true)
-                        val from = createPath(s"project/img/temp/$hash.jpg")
-                        val file: File = new File(from)
-                        val src: BufferedImage = ImageIO.read(file)
-                        val width = src.getWidth
-                        val height = src.getHeight
-                        val bd:BigDecimal = file.length()/1024.0
-                        val kb = bd.setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
-                        if(kb <= 2048){
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/img/temp/$hash.jpg","width" :$width , "height" : $height}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        }else{
-                            deleteFile(from)
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片最大2M","url":""}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        }
-                    } getOrElse {
-                        result = mission_file
-                    }
-                }
+                        f.ref.moveTo(new File(createPath(s"work/$date/$hash.jpg")), replace = true)
 
-                case "projectFile" => {
-                    request.body.file(K_FILE_UPLOAD).map { f =>
-                        val hash = fileHash(f.ref.file).toLowerCase()
-                        //后缀名
-                        val filename = f.filename
-                        val fix = filename.substring(filename.lastIndexOf(""".""")+1,filename.length())
-                        f.ref.moveTo(new File(createPath(s"project/file/$hash.$fix")), replace = true)
-                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"project/file/$hash.$fix"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                        workSize.foreach({ f =>
+                            val from = createPath(s"work/$date/$hash.jpg")
+                            val size = f.replace('x', '/')
+                            val to = createPath(s"work/$date/$size/$hash.jpg")
+                            thumbnails(from, to, f)
+                        })
+
+                        result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"work/$date/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                     } getOrElse {
                         result = mission_file
                     }
                 }
-
-                //上传身份证
-                case "cardImg" => {
-                    if (!userId.equals("0")) {
-                        request.body.file(K_FILE_UPLOAD).map { f =>
-                            val hash = fileHash(f.ref.file).toLowerCase()
-                            f.ref.moveTo(new File(createPath(s"auth/card/$userId/$hash.jpg")), replace = true)
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"auth/card/$userId/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        } getOrElse {
-                            result = mission_file
-                        }
+                case "leave" => {
+                    if (corpId.equals("")) {
+                        Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing params cropId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+                    }else if(userId.equals("")){
+                        Ok(Json.stringify(Json.parse( """{"status" : 2, "message" : "missing params userId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
                     }else{
-                        result = mission_file
-                    }
-                }
-                //其他证件
-                case "creditImg" => {
-                    if (!userId.equals("0")) {
                         request.body.file(K_FILE_UPLOAD).map { f =>
+                            //创建日期
+                            val date = new DateTime().toString("yyyyMMdd")
                             val hash = fileHash(f.ref.file).toLowerCase()
-                            //后缀名
-                            val filename = f.filename
-                            val fix = filename.substring(filename.lastIndexOf(""".""")+1,filename.length())
-                            f.ref.moveTo(new File(createPath(s"project/file/$hash.$fix")), replace = true)
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"auth/card/file/$userId/$hash.$fix"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+                            f.ref.moveTo(new File(createPath(s"leave/$date/$corpId/$userId/$hash.jpg")), replace = true)
+
+                            workSize.foreach({ f =>
+                                val from = createPath(s"leave/$date/$corpId/$userId/$hash.jpg")
+                                val size = f.replace('x', '/')
+                                val to = createPath(s"leave/$date/$corpId/$userId/$size/$hash.jpg")
+                                thumbnails(from, to, f)
+                            })
+
+                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"leave/$date/$corpId/$userId/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
                         } getOrElse {
                             result = mission_file
                         }
-                    }else{
-                        result = mission_file
                     }
                 }
-                //logo
-                case "logo" => {
-                    request.body.file(K_FILE_UPLOAD).map { f =>
-                        val hash = fileHash(f.ref.file).toLowerCase()
-                        f.ref.moveTo(new File(createPath(s"logo/$hash.jpg")), replace = true)
-                        val from = createPath(s"activity/$hash.jpg")
-                        val file: File = new File(from)
-                        val bd:BigDecimal = file.length()/1024.0
-                        val kb = bd.setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
-                        if(kb <= 2048){
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"logo/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        }else{
-                            result = Ok(Json.stringify(Json.parse(s"""{"status" : 1, "message" :"图片最大支持2M","url":"logo/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
-                        }
-                    } getOrElse {
-                        result = mission_file
-                    }
+				case "suite" => {
+					request.body.file(K_FILE_UPLOAD).map { f =>
+						//创建日期
+						val date = new DateTime().toString("yyyyMMdd")
+						val hash = fileHash(f.ref.file).toLowerCase()
+						f.ref.moveTo(new File(createPath(s"suite/$date/$hash.jpg")), replace = true)
+
+						workSize.foreach({ f =>
+							val from = createPath(s"suite/$date/$hash.jpg")
+							val size = f.replace('x', '/')
+							val to = createPath(s"suite/$date/$size/$hash.jpg")
+							thumbnails(from, to, f)
+						})
+
+						result = Ok(Json.stringify(Json.parse(s"""{"status" : 0, "message" :"success","url":"suite/$date/120/120/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+					} getOrElse {
+						result = mission_file
+					}
+                    
+                }
+				case "burse" => {
+					if (corpId.equals("")) {
+                        Ok(Json.stringify(Json.parse( """{"status" : 1, "message" : "missing params cropId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+                    }else if(userId.equals("")){
+                        Ok(Json.stringify(Json.parse( """{"status" : 2, "message" : "missing params userId"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+                    }else if(uuid.equals("")){
+						Ok(Json.stringify(Json.parse( """{"status" : 3, "message" : "missing params uuid"}"""))).as("text/json").withHeaders((CACHE_CONTROL, "no-cache"))
+					}else{
+						request.body.file(K_FILE_UPLOAD).map { f =>
+							//创建日期
+							val date = new DateTime().toString("yyyyMMdd")
+							val hash = fileHash(f.ref.file).toLowerCase()
+							f.ref.moveTo(new File(createPath(s"burse/$corpId/$userId/$date/$hash.jpg")), replace = true)
+
+							workSize.foreach({ f =>
+								val from = createPath(s"burse/$corpId/$userId$date/$hash.jpg")
+								val size = f.replace('x', '/')
+								val to = createPath(s"burse/$corpId/$userId/$date/$size/$hash.jpg")
+								thumbnails(from, to, f)
+							})
+
+							result = Ok(Json.stringify(Json.parse(s"""{"status" : 0,"uuid":"$uuid","message" :"success","url":"burse/$corpId/$userId/$date/120/120/$hash.jpg"}"""))).withHeaders((CACHE_CONTROL, "no-cache"))
+						} getOrElse {
+							result = mission_file
+						}
+					}
                 }
             }
             result
@@ -230,46 +181,6 @@ object Application extends Controller {
         }
         result
     }
-
-    //Editor-图片特殊处理
-    def editorUpload = Action(parse.multipartFormData) {
-        implicit request=>
-        val callback = request.getQueryString("CKEditorFuncNum").getOrElse("")
-        request.body.file("upload").map { f =>
-            val hash = fileHash(f.ref.file).toLowerCase()
-            //后缀名
-            val filename = f.filename
-            val fix = filename.substring(filename.lastIndexOf(""".""")+1,filename.length())
-            if(fix.contains("jpg|jpeg|gif|png|bmp|JPG|JPEG|GIF|BMP|PNG")){
-                val url = s"editor/$hash.jpg"
-                f.ref.moveTo(new File(createPath(url)), replace = true)
-                Ok(
-                    s"""
-                       |<script type="text/javascript">
-                       |window.parent.CKEDITOR.tools.callFunction('$callback','http://image.ruijiutou.com/$url','')
-                       |</script>
-                """.stripMargin
-                ).as("text/html")
-            }else{
-                Ok(
-                    s"""
-                       |<script type="text/javascript">
-                       |window.parent.CKEDITOR.tools.callFunction('$callback','','文件格式不正确(必须为.jpg/.gif/.bmp/.png文件)')
-                       |</script>
-                """.stripMargin
-                ).as("text/html")
-            }
-        } getOrElse {
-            Ok(
-                s"""
-                   |<script type="text/javascript">
-                   |window.parent.CKEDITOR.tools.callFunction('$callback','','上传的文件不存在')
-                   |</script>
-                """.stripMargin
-            ).as("text/html")
-        }
-    }
-
 
     //创建路劲
     def createPath(filePath: String): String = {

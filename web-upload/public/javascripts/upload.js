@@ -14,7 +14,7 @@ $(document).ready(function(){
     //设置上传地址
     xiuxiu.setUploadURL("http://121.43.117.154:9000/upload");
     //设置上传参数
-    xiuxiu.setUploadArgs({userId:11128, filetype:"avatar"});
+    xiuxiu.setUploadArgs({userId:11128, filetype:"work"});
     //设置上传方式
     xiuxiu.setUploadType (2);
     //初始化图片
