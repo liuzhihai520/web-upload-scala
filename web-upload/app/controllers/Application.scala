@@ -143,7 +143,7 @@ object Application extends Controller {
 						request.body.file(K_FILE_UPLOAD).map { f =>
 							//创建日期
 							val date = new DateTime().toString("yyyyMMdd")
-							val hash = fileHash(f.ref.file).toLowerCase()
+							val hash = new DateTime().getMillis
 							f.ref.moveTo(new File(createPath(s"burse/$corpId/$userId/$date/$hash.jpg")), replace = true)
 
 							workSize.foreach({ f =>
